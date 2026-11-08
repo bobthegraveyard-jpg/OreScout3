@@ -71,8 +71,8 @@ public final class OreScoutClient implements ClientModInitializer {
     private static final StagedVertexBuffer BUFFER =
         new StagedVertexBuffer(() -> "OreScout highlight buffer", RenderType.SMALL_BUFFER_SIZE);
 
-    private static boolean enabled = true;
     private static boolean wasOKeyDown = false;
+    private static boolean wasPKeyDown = false;
     private static Level lastLevel = null;
     private static int scanY = Integer.MIN_VALUE;
 
@@ -116,10 +116,15 @@ public final class OreScoutClient implements ClientModInitializer {
         if (client.getWindow() != null) {
             boolean keyDown = GLFW.glfwGetKey(client.getWindow().handle(), GLFW.GLFW_KEY_O) == GLFW.GLFW_PRESS;
             if (keyDown && !wasOKeyDown && client.player != null) {
-                enabled = !enabled;
-                // The HUD reflects the enabled state; avoid a version-specific toast API.
+                OreScoutConfig.setOverlayEnabled(!OreScoutConfig.isOverlayEnabled());
             }
             wasOKeyDown = keyDown;
+
+            boolean settingsDown = GLFW.glfwGetKey(client.getWindow().handle(), GLFW.GLFW_KEY_P) == GLFW.GLFW_PRESS;
+            if (settingsDown && !wasPKeyDown && client.player != null) {
+                client.setScreen(new OreScoutConfigScreen(client.screen));
+            }
+            wasPKeyDown = settingsDown;
         }
 
         if (client.level == null || client.player == null) {
@@ -135,10 +140,6 @@ public final class OreScoutClient implements ClientModInitializer {
             FOUND.clear();
             lastLevel = level;
             scanY = level.getMinY();
-        }
-
-        if (!enabled) {
-            return;
         }
 
         int minY = level.getMinY();
@@ -169,7 +170,7 @@ public final class OreScoutClient implements ClientModInitializer {
                     BlockPos pos = new BlockPos(x, y, z);
                     BlockState state = level.getBlockState(pos);
                     OreInfo ore = ORE_TYPES.get(state.getBlock());
-                    if (ore != null) {
+                    if (ore != null && OreScoutConfig.isOreEnabled(ore.name())) {
                         FOUND.put(pos.asLong(), new OreHit(x, y, z, ore));
                     }
                 }
@@ -185,6 +186,7 @@ public final class OreScoutClient implements ClientModInitializer {
         int maxDistanceSquared = maxDistance * maxDistance;
         FOUND.entrySet().removeIf(entry -> {
             OreHit hit = entry.getValue();
+            if (!OreScoutConfig.isOreEnabled(hit.ore().name())) return true;
             int dx = hit.x() - playerPos.getX();
             int dy = hit.y() - playerPos.getY();
             int dz = hit.z() - playerPos.getZ();
@@ -198,7 +200,7 @@ public final class OreScoutClient implements ClientModInitializer {
     }
 
     private static void renderHud(GuiGraphicsExtractor graphics, DeltaTracker tickCounter) {
-        if (!enabled) {
+        if (!OreScoutConfig.isCoordinatesEnabled()) {
             return;
         }
 
@@ -210,7 +212,7 @@ public final class OreScoutClient implements ClientModInitializer {
         List<OreHit> nearby = nearestHits(client.player.blockPosition());
         int rows = Math.min(DISPLAY_LIMIT, nearby.size());
         graphics.fill(8, 8, 220, 34 + rows * 12, 0x99000000);
-        graphics.text(client.font, "OreScout  [O: toggle]", 14, 13, 0xFFFFFFFF, false);
+        graphics.text(client.font, "OreScout  [P: settings] [O: boxes]", 14, 13, 0xFFFFFFFF, false);
 
         for (int i = 0; i < rows; i++) {
             OreHit hit = nearby.get(i);
@@ -235,7 +237,7 @@ public final class OreScoutClient implements ClientModInitializer {
     }
 
     private static void renderHighlights(LevelRenderContext context) {
-        if (!enabled || renderHits.isEmpty()) {
+        if (!OreScoutConfig.isOverlayEnabled() || renderHits.isEmpty()) {
             return;
         }
 
