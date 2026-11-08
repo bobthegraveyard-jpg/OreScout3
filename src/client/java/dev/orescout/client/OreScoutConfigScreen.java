@@ -63,14 +63,14 @@ public final class OreScoutConfigScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         graphics.fill(0, 0, width, height, 0xC0101018);
-        graphics.drawCenteredString(font, title, width / 2, 12, 0xFFFFFFFF);
-        graphics.drawCenteredString(font, Component.literal("Choose which ores to track and which displays to show"),
+        graphics.centeredText(font, title, width / 2, 12, 0xFFFFFFFF);
+        graphics.centeredText(font, Component.literal("Choose which ores to track and which displays to show"),
             width / 2, 24, 0xFFBBBBBB);
         super.extractRenderState(graphics, mouseX, mouseY, delta);
     }
 
     @Override
     public void onClose() {
-        if (minecraft != null) minecraft.setScreen(parent);
+        if (minecraft != null) minecraft.gui.setScreen(parent);
     }
 }
