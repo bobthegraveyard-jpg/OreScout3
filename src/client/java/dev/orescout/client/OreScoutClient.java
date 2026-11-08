@@ -112,6 +112,10 @@ public final class OreScoutClient implements ClientModInitializer {
         ORE_TYPES.put(block, new OreInfo(name, r, g, b));
     }
 
+    public static List<String> getOreNames() {
+        return ORE_TYPES.values().stream().map(OreInfo::name).distinct().toList();
+    }
+
     private static void onClientTick(Minecraft client) {
         if (client.getWindow() != null) {
             boolean keyDown = GLFW.glfwGetKey(client.getWindow().handle(), GLFW.GLFW_KEY_O) == GLFW.GLFW_PRESS;
