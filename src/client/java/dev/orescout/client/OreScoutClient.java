@@ -126,7 +126,7 @@ public final class OreScoutClient implements ClientModInitializer {
 
             boolean settingsDown = GLFW.glfwGetKey(client.getWindow().handle(), GLFW.GLFW_KEY_P) == GLFW.GLFW_PRESS;
             if (settingsDown && !wasPKeyDown && client.player != null) {
-                client.setScreen(new OreScoutConfigScreen(client.screen));
+                client.gui.setScreen(new OreScoutConfigScreen(client.gui.screen()));
             }
             wasPKeyDown = settingsDown;
         }
