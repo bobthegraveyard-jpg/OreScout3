@@ -117,8 +117,8 @@ public final class OreScoutClient implements ClientModInitializer {
             boolean keyDown = GLFW.glfwGetKey(client.getWindow().handle(), GLFW.GLFW_KEY_O) == GLFW.GLFW_PRESS;
             if (keyDown && !wasOKeyDown && client.player != null) {
                 enabled = !enabled;
-                client.player.displayClientMessage(
-                    Component.literal("OreScout: " + (enabled ? "ON" : "OFF")), true
+                client.gui.setOverlayMessage(
+                    Component.literal("OreScout: " + (enabled ? "ON" : "OFF")), false
                 );
             }
             wasOKeyDown = keyDown;
