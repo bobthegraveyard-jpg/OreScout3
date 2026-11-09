@@ -10,21 +10,29 @@ OreScout is intended to be a proactive, seed-derived ore map. Its ore-coordinate
 - scanning loaded block states;
 - using server chunk contents or block updates to correct its calculated ore map.
 
-The client renderer projects the calculated coordinates through walls, independently of whether the corresponding server chunks have been sent to the client. The existing **O** overlay toggle, **P** settings screen, ore colours, and coordinate HUD are retained.
+The client renderer projects calculated coordinates through walls, independently of whether corresponding server chunks have been sent to the client.
 
-## Current integration status
+## Ore-generation engine status
 
-- The old integrated-server chunk-generation path has been removed.
-- The old loaded-block-state ore scanner and reconciliation path have been removed.
-- The renderer now consumes the client-owned `SeedWorldKnowledge` coordinate database.
-- Successful local block-break actions remove matching coordinates from that database without inspecting the resulting block state.
-- The independent 26.2 seed-generation producer is **not yet integrated**. Until that producer publishes calculated chunks through `OreScoutClient.publishGeneratedChunk`, the overlay has no generated coordinates to display. This is an explicit incomplete stage, not a working ore-finding release.
+The generation work is deliberately separated from the overlay. The new `dev.orescout.worldgen.LocalChunkPipeline` bootstraps the pinned 26.2 vanilla registries and runs Minecraft's own local in-memory terrain implementation through:
+
+`BIOMES → NOISE → SURFACE → CARVERS`
+
+It creates `ProtoChunk` instances locally. It does not request live chunks, access a live `Level`, inspect server-supplied block states, or connect to an integrated server. Its deterministic summary method is intended for regression checks.
+
+**This is the terrain substrate, not the completed ore calculator.** The following work remains before OreScout can claim to know exact ore coordinates:
+
+1. Reproduce the 26.2 decoration-feature ordering and per-feature seed derivation.
+2. Reproduce the complete placement-modifier chains for every Overworld ore feature.
+3. Execute configured ore features against the local simulated chunk state, including the required neighboring source-chunk halo and correct feature ordering.
+4. Extract every resulting ore block coordinate from the locally generated state.
+5. Compare the output against independently generated vanilla chunks and record exact-match regressions.
+
+Until those stages are implemented, no generated ore coordinates are published and the overlay should not be expected to show ores. Do not treat the current terrain pipeline as proof of ore positions.
 
 ## Coordinate publication contract
 
-The generation engine must publish each calculated chunk using `OreScoutClient.publishGeneratedChunk(chunkX, chunkZ, positions)`. Each `OrePosition.oreId` must match one of the display names exposed by `OreScoutClient.getOreNames()` (for example, `Diamond`, `Deepslate diamond`, or `Ancient debris`).
-
-The generator must run entirely from the fixed seed and vanilla 26.2 generation data. It must not read client or server chunk block states, ask a server to generate chunks, or use server-supplied ore information.
+The eventual generator must publish each calculated chunk using `OreScoutClient.publishGeneratedChunk(chunkX, chunkZ, positions)`. Each `OrePosition.oreId` must match one of the display names exposed by `OreScoutClient.getOreNames()` (for example, `Diamond`, `Deepslate diamond`, or `Ancient debris`).
 
 ## Ores tracked
 
@@ -32,10 +40,12 @@ Diamond, emerald, coal, gold, iron, copper, lapis, redstone, nether gold, nether
 
 ## Build
 
-The current work is being validated against the Java 25 / Fabric 26.2 CI toolchain.
-
-The GitHub Actions workflow builds the mod with Java 25 and the Fabric 26.2 toolchain. Successful builds upload the JAR as the `Artifacts` workflow artifact.
+The project targets Java 25 and Fabric for Minecraft 26.2. GitHub Actions runs `./gradlew build` and uploads the resulting JAR as the `Artifacts` workflow artifact.
 
 ## License
 
 CC0-1.0.
+
+The local terrain pipeline is adapted from the MIT-licensed
+[hzyhhzy/codex-minecraft-seed-methodology](https://github.com/hzyhhzy/codex-minecraft-seed-methodology)
+project; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
