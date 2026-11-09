@@ -32,6 +32,8 @@ Diamond, emerald, coal, gold, iron, copper, lapis, redstone, nether gold, nether
 
 ## Build
 
+The current work is being validated against the Java 25 / Fabric 26.2 CI toolchain.
+
 The GitHub Actions workflow builds the mod with Java 25 and the Fabric 26.2 toolchain. Successful builds upload the JAR as the `Artifacts` workflow artifact.
 
 ## License
