@@ -117,7 +117,7 @@ public final class VanillaDecorationPlanner {
 
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
-                ChunkPos pos = new ChunkPos(center.x + dx, center.z + dz);
+                ChunkPos pos = new ChunkPos(center.x() + dx, center.z() + dz);
                 ChunkAccess chunk = localChunks.get(pos);
                 if (chunk == null) {
                     throw new IllegalArgumentException(
