@@ -20,16 +20,17 @@ The generation work is deliberately separated from the overlay. The new `dev.ore
 
 It creates `ProtoChunk` instances locally. It does not request live chunks, access a live `Level`, inspect server-supplied block states, or connect to an integrated server. Its deterministic summary method is intended for regression checks.
 
-**This is the terrain substrate, not the completed ore calculator.** The following work remains before OreScout can claim to know exact ore coordinates:
+**The local placed-feature execution path is now implemented, but it is not yet validated as an exact world replica.** The current code adds:
 
-1. **Feature ordering substrate added:** `VanillaFeatureSchedule` asks the 26.2 generator to initialise its own memoized `PlacedFeatureIndexer` result and reads the vanilla per-decoration-step order. It fails closed if the expected internal layout is not present. This avoids inventing a separate sort order.
-2. Reproduce the exact per-chunk/per-feature random seeding and the 3×3 biome-union filtering used by vanilla decoration.
-3. Reproduce the complete placement-modifier chains for every Overworld ore feature.
-4. Execute configured ore features against the local simulated chunk state, including the required neighboring source-chunk halo and correct feature ordering.
-5. Extract every resulting ore block coordinate from the locally generated state.
-6. Compare the output against independently generated vanilla chunks and record exact-match regressions.
+1. `VanillaFeatureSchedule`: reads the vanilla 26.2 indexed placed-feature order.
+2. `VanillaDecorationPlanner`: selects features using the surrounding 3×3 biome set and derives the vanilla per-feature random stream.
+3. `LocalWorldGenLevel`: a restricted world-generation facade backed only by OreScout-owned chunks; it has no server-level or live-chunk fallback.
+4. `SeedOreGenerationEngine`: generates a local 3×3 terrain/carver neighborhood, executes the selected placed features for the requested center chunk, and extracts ore block coordinates.
+5. `SeedOreGenerationSmokeTest`: a headless CI test that exercises the local generation path.
 
-Until those stages are implemented, no generated ore coordinates are published and the overlay should not be expected to show ores. Do not treat the current terrain pipeline as proof of ore positions.
+**Important remaining correctness work:** structure starts/references are not yet simulated, and the local world adapter still needs to be checked against every operation vanilla features may call. The smoke test verifies that the code runs and produces internally consistent output; it does not prove exact equality with vanilla. The next required milestone is to compare multiple generated chunks against the independently validated vanilla ore coordinates, then close any differences before connecting this engine to the overlay.
+
+The engine is not yet wired into the live client scheduler, and no generated ore coordinates are currently published to the overlay. Do not treat a successful compilation or smoke test as proof of exact ore positions.
 
 ## Coordinate publication contract
 
@@ -41,7 +42,7 @@ Diamond, emerald, coal, gold, iron, copper, lapis, redstone, nether gold, nether
 
 ## Build
 
-The project targets Java 25 and Fabric for Minecraft 26.2. GitHub Actions runs `./gradlew build` and uploads the resulting JAR as the `Artifacts` workflow artifact.
+The project targets Java 25 and Fabric for Minecraft 26.2. GitHub Actions runs `./gradlew build worldgenSmokeTest` and uploads the resulting JAR as the `Artifacts` workflow artifact.
 
 ## License
 
