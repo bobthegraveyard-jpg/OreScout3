@@ -133,7 +133,7 @@ public final class LocalWorldGenLevel implements InvocationHandler {
     }
 
     private ChunkAccess chunkAt(BlockPos pos) {
-        ChunkPos chunkPos = new ChunkPos(pos);
+        ChunkPos chunkPos = new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4);
         ChunkAccess chunk = chunks.get(chunkPos);
         if (chunk == null) {
             throw new IllegalStateException("Feature accessed outside local chunk halo: " + pos);
