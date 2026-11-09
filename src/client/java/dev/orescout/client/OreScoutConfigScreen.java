@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ScrollableLayout;
+import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -30,13 +31,13 @@ public final class OreScoutConfigScreen extends Screen {
         int buttonWidth = Math.max(150, Math.min(420, panelWidth - 28));
         LinearLayout content = LinearLayout.vertical().spacing(6);
 
-        content.addChild(sectionLabel("GENERAL DISPLAY"));
+        content.addChild(new StringWidget(buttonWidth, 18, Component.literal("GENERAL DISPLAY"), font));
         content.addChild(toggleButton("Highlight boxes", OreScoutConfig.isOverlayEnabled(),
             value -> OreScoutConfig.setOverlayEnabled(value), buttonWidth));
         content.addChild(toggleButton("Coordinates list", OreScoutConfig.isCoordinatesEnabled(),
             value -> OreScoutConfig.setCoordinatesEnabled(value), buttonWidth));
 
-        content.addChild(sectionLabel("ORE TYPES"));
+        content.addChild(new StringWidget(buttonWidth, 18, Component.literal("ORE TYPES"), font));
         List<String> ores = new ArrayList<>(OreScoutClient.getOreNames());
         for (String ore : ores) {
             content.addChild(Button.builder(oreLabel(ore), button -> {
@@ -55,10 +56,6 @@ public final class OreScoutConfigScreen extends Screen {
                 addRenderableWidget(widget);
             }
         });
-    }
-
-    private static Component sectionLabel(String text) {
-        return Component.literal("— " + text + " —");
     }
 
     private static Button toggleButton(String name, boolean enabled,
