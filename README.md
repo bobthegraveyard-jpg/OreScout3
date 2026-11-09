@@ -22,11 +22,12 @@ It creates `ProtoChunk` instances locally. It does not request live chunks, acce
 
 **This is the terrain substrate, not the completed ore calculator.** The following work remains before OreScout can claim to know exact ore coordinates:
 
-1. Reproduce the 26.2 decoration-feature ordering and per-feature seed derivation.
-2. Reproduce the complete placement-modifier chains for every Overworld ore feature.
-3. Execute configured ore features against the local simulated chunk state, including the required neighboring source-chunk halo and correct feature ordering.
-4. Extract every resulting ore block coordinate from the locally generated state.
-5. Compare the output against independently generated vanilla chunks and record exact-match regressions.
+1. **Feature ordering substrate added:** `VanillaFeatureSchedule` asks the 26.2 generator to initialise its own memoized `PlacedFeatureIndexer` result and reads the vanilla per-decoration-step order. It fails closed if the expected internal layout is not present. This avoids inventing a separate sort order.
+2. Reproduce the exact per-chunk/per-feature random seeding and the 3×3 biome-union filtering used by vanilla decoration.
+3. Reproduce the complete placement-modifier chains for every Overworld ore feature.
+4. Execute configured ore features against the local simulated chunk state, including the required neighboring source-chunk halo and correct feature ordering.
+5. Extract every resulting ore block coordinate from the locally generated state.
+6. Compare the output against independently generated vanilla chunks and record exact-match regressions.
 
 Until those stages are implemented, no generated ore coordinates are published and the overlay should not be expected to show ores. Do not treat the current terrain pipeline as proof of ore positions.
 
