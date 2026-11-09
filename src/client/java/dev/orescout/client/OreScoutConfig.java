@@ -16,6 +16,7 @@ public final class OreScoutConfig {
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("orescout.properties");
     private static boolean overlayEnabled = true;
     private static boolean coordinatesEnabled = true;
+    private static boolean seedPredictionEnabled = true;
 
     static {
         load();
@@ -33,10 +34,12 @@ public final class OreScoutConfig {
         }
         overlayEnabled = Boolean.parseBoolean(VALUES.getProperty("overlay", "true"));
         coordinatesEnabled = Boolean.parseBoolean(VALUES.getProperty("coordinates", "true"));
+        seedPredictionEnabled = Boolean.parseBoolean(VALUES.getProperty("seedPrediction", "true"));
     }
 
     public static synchronized boolean isOverlayEnabled() { return overlayEnabled; }
     public static synchronized boolean isCoordinatesEnabled() { return coordinatesEnabled; }
+    public static synchronized boolean isSeedPredictionEnabled() { return seedPredictionEnabled; }
     public static synchronized boolean isOreEnabled(String ore) {
         return Boolean.parseBoolean(VALUES.getProperty("ore." + ore, "true"));
     }
@@ -48,6 +51,11 @@ public final class OreScoutConfig {
 
     public static synchronized void setCoordinatesEnabled(boolean value) {
         coordinatesEnabled = value;
+        save();
+    }
+
+    public static synchronized void setSeedPredictionEnabled(boolean value) {
+        seedPredictionEnabled = value;
         save();
     }
 
@@ -67,6 +75,7 @@ public final class OreScoutConfig {
     private static void save() {
         VALUES.setProperty("overlay", Boolean.toString(overlayEnabled));
         VALUES.setProperty("coordinates", Boolean.toString(coordinatesEnabled));
+        VALUES.setProperty("seedPrediction", Boolean.toString(seedPredictionEnabled));
         try {
             Files.createDirectories(FILE.getParent());
             try (OutputStream output = Files.newOutputStream(FILE)) {
