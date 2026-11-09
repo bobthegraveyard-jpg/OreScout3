@@ -242,12 +242,12 @@ public final class OreScoutClient implements ClientModInitializer {
     }
 
     private static void tickSeedPrediction(Minecraft client) {
-        if (!OreScoutConfig.isSeedPredictionEnabled() || client.level == null
-                || !client.level.dimension().equals(Level.OVERWORLD)) return;
+        if (!OreScoutConfig.isSeedPredictionEnabled() || client.level == null) return;
 
         MinecraftServer server = client.getSingleplayerServer();
         if (server == null) return;
-        ServerLevel serverLevel = server.getLevel(Level.OVERWORLD);
+        // Use the current dimension's vanilla generator (Overworld or Nether).
+        ServerLevel serverLevel = server.getLevel(client.level.dimension());
         if (serverLevel == null || serverLevel.getSeed() != TARGET_SEED) return;
 
         int centerX = client.player.blockPosition().getX() >> 4;
