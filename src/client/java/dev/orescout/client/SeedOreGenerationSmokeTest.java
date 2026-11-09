@@ -32,7 +32,7 @@ public final class SeedOreGenerationSmokeTest {
                             .thenComparing(SeedWorldKnowledge.OrePosition::oreId))
                     .map(ore -> "%d,%d,%d,%s".formatted(
                             ore.x(), ore.y(), ore.z(), ore.oreId()))
-                    .collect(java.util.stream.Collectors.joining("\\n"));
+                    .collect(java.util.stream.Collectors.joining("\n"));
             String hash = java.util.HexFormat.of().formatHex(
                     java.security.MessageDigest.getInstance("SHA-256")
                             .digest(canonical.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
