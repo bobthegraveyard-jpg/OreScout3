@@ -5,13 +5,16 @@ public final class SeedOreGenerationSmokeTest {
     private SeedOreGenerationSmokeTest() {}
 
     public static void main(String[] args) throws Exception {
-        int chunkX = args.length > 0 ? Integer.parseInt(args[0]) : 0;
-        int chunkZ = args.length > 1 ? Integer.parseInt(args[1]) : 0;
+        int chunkX = args.length > 0 ? Integer.parseInt(args[0]) : 12;
+        int chunkZ = args.length > 1 ? Integer.parseInt(args[1]) : 2;
 
         try (SeedOreGenerationEngine engine = new SeedOreGenerationEngine()) {
             SeedOreGenerationEngine.GeneratedOreChunk result = engine.generate(chunkX, chunkZ);
             if (result.chunkX() != chunkX || result.chunkZ() != chunkZ) {
                 throw new AssertionError("Generation returned the wrong chunk coordinates");
+            }
+            if (result.ores().isEmpty()) {
+                throw new AssertionError("No ores were extracted from the generated chunk");
             }
             if (result.placedFeatureCalls() <= 0) {
                 throw new AssertionError("No vanilla placed features were selected");
