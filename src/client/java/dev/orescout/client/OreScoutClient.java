@@ -132,7 +132,7 @@ public final class OreScoutClient implements ClientModInitializer {
         boolean togglePressed = toggleOverlayKey != null && toggleOverlayKey.consumeClick();
         boolean settingsPressed = openSettingsKey != null && openSettingsKey.consumeClick();
         // Drain key clicks while a screen is open, but only act during gameplay.
-        if (client.player != null && client.screen == null) {
+        if (client.player != null && client.gui.screen() == null) {
             if (togglePressed) {
                 OreScoutConfig.setOverlayEnabled(!OreScoutConfig.isOverlayEnabled());
             }
