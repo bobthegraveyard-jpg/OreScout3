@@ -39,14 +39,14 @@ public final class SeedOreGenerationSmokeTest {
             java.nio.file.Path output = java.nio.file.Path.of(
                     "build", "ore-scout-smoke", "chunk-" + chunkX + "-" + chunkZ + ".csv");
             java.nio.file.Files.createDirectories(output.getParent());
-            String csv = "x,y,z,oreId\\n" + result.ores().stream()
+            String csv = "x,y,z,oreId\n" + result.ores().stream()
                     .sorted(java.util.Comparator.comparingInt(SeedWorldKnowledge.OrePosition::x)
                             .thenComparingInt(SeedWorldKnowledge.OrePosition::y)
                             .thenComparingInt(SeedWorldKnowledge.OrePosition::z)
                             .thenComparing(SeedWorldKnowledge.OrePosition::oreId))
                     .map(ore -> "%d,%d,%d,%s".formatted(
                             ore.x(), ore.y(), ore.z(), ore.oreId()))
-                    .collect(java.util.stream.Collectors.joining("\\n"));
+                    .collect(java.util.stream.Collectors.joining("\n"));
             java.nio.file.Files.writeString(output, csv, java.nio.charset.StandardCharsets.UTF_8);
             System.out.println("OreScout generated coordinate export: " + output);
             System.out.printf(
