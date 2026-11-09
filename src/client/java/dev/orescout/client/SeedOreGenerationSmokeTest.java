@@ -24,9 +24,21 @@ public final class SeedOreGenerationSmokeTest {
                     throw new AssertionError("Extracted ore escaped the requested chunk: " + ore);
                 }
             }
+
+            String canonical = result.ores().stream()
+                    .sorted(java.util.Comparator.comparingInt(SeedWorldKnowledge.OrePosition::x)
+                            .thenComparingInt(SeedWorldKnowledge.OrePosition::y)
+                            .thenComparingInt(SeedWorldKnowledge.OrePosition::z)
+                            .thenComparing(SeedWorldKnowledge.OrePosition::oreId))
+                    .map(ore -> "%d,%d,%d,%s".formatted(
+                            ore.x(), ore.y(), ore.z(), ore.oreId()))
+                    .collect(java.util.stream.Collectors.joining("\\n"));
+            String hash = java.util.HexFormat.of().formatHex(
+                    java.security.MessageDigest.getInstance("SHA-256")
+                            .digest(canonical.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             System.out.printf(
-                    "OreScout local generation smoke test: chunk=%d,%d placedFeatures=%d ores=%d summary=%s%n",
-                    chunkX, chunkZ, result.placedFeatureCalls(), result.ores().size(),
+                    "OreScout local generation smoke test: chunk=%d,%d placedFeatures=%d ores=%d oreSha256=%s summary=%s%n",
+                    chunkX, chunkZ, result.placedFeatureCalls(), result.ores().size(), hash,
                     result.terrainAndDecorationSummary());
         }
     }
