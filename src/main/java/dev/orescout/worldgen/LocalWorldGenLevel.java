@@ -77,8 +77,17 @@ public final class LocalWorldGenLevel implements InvocationHandler {
             case "getSeed" -> seed;
             case "registryAccess" -> registries;
             case "getMinY", "getMinBuildHeight" -> minY;
-            case "getHeight", "getGenDepth", "getWorldHeight" ->
-                    a.length == 0 ? height : heightAt((Heightmap.Types) a[0], (int) a[1], (int) a[2]);
+            case "getHeight" -> {
+                if (a.length == 0) yield height;
+                if (a.length == 2 && a[1] instanceof BlockPos pos) {
+                    yield heightAt((Heightmap.Types) a[0], pos.getX(), pos.getZ());
+                }
+                if (a.length == 3 && a[0] instanceof Heightmap.Types type) {
+                    yield heightAt(type, (int) a[1], (int) a[2]);
+                }
+                throw new UnsupportedOperationException("Unsupported local getHeight overload");
+            }
+            case "getGenDepth", "getWorldHeight" -> height;
             case "getMaxY", "getMaxBuildHeight" -> minY + height;
             case "getSeaLevel" -> generator.getSeaLevel();
             case "isClientSide" -> false;
