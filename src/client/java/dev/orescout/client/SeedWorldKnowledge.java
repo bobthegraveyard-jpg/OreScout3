@@ -23,6 +23,7 @@ public final class SeedWorldKnowledge {
 
     private final Map<Long, List<OrePosition>> positionsByChunk = new HashMap<>();
     private final Set<Long> minedPositions = new HashSet<>();
+    private final Set<Long> generatedChunks = new HashSet<>();
 
     public synchronized void replaceChunk(int chunkX, int chunkZ, Collection<OrePosition> positions) {
         long key = chunkKey(chunkX, chunkZ);
@@ -36,6 +37,25 @@ public final class SeedWorldKnowledge {
             }
         }
         positionsByChunk.put(key, List.copyOf(copy));
+        generatedChunks.add(key);
+    }
+
+    public synchronized boolean isChunkGenerated(int chunkX, int chunkZ) {
+        return generatedChunks.contains(chunkKey(chunkX, chunkZ));
+    }
+
+    public synchronized int generatedChunkCount() {
+        return generatedChunks.size();
+    }
+
+    public synchronized List<ChunkCoordinate> missingChunksInSquare(int centerChunkX, int centerChunkZ, int radiusChunks) {
+        List<ChunkCoordinate> missing = new ArrayList<>();
+        for (int x = centerChunkX - radiusChunks; x <= centerChunkX + radiusChunks; x++) {
+            for (int z = centerChunkZ - radiusChunks; z <= centerChunkZ + radiusChunks; z++) {
+                if (!generatedChunks.contains(chunkKey(x, z))) missing.add(new ChunkCoordinate(x, z));
+            }
+        }
+        return List.copyOf(missing);
     }
 
     public synchronized List<OrePosition> positionsInChunk(int chunkX, int chunkZ) {
@@ -81,6 +101,7 @@ public final class SeedWorldKnowledge {
 
     public synchronized void clearGeneratedCache() {
         positionsByChunk.clear();
+        generatedChunks.clear();
     }
 
     public static long chunkKey(int chunkX, int chunkZ) {
@@ -92,6 +113,8 @@ public final class SeedWorldKnowledge {
                 | (((long) z & 0x3ffffffL) << 12)
                 | ((long) y & 0xfffL);
     }
+
+    public record ChunkCoordinate(int x, int z) {}
 
     /** oreId is the display key returned by OreScoutClient.getOreNames(). */
     public record OrePosition(int x, int y, int z, String oreId) {
