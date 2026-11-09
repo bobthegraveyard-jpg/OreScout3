@@ -58,7 +58,6 @@ import dev.orescout.OreScout;
  * the existing HUD and through-wall highlight renderer.</p>
  */
 public final class OreScoutClient implements ClientModInitializer {
-    private static final int RENDER_RADIUS_BLOCKS = 75;
     private static final int DISPLAY_LIMIT = 8;
 
     private static final Map<String, OreInfo> ORE_TYPES = new LinkedHashMap<>();
@@ -187,17 +186,16 @@ public final class OreScoutClient implements ClientModInitializer {
         }
 
         BlockPos playerPos = client.player.blockPosition();
-        int radiusChunks = (RENDER_RADIUS_BLOCKS + 15) >> 4;
+        int radiusChunks = Math.max(2, client.options.renderDistance().get());
+        int radiusBlocks = radiusChunks * 16;
         List<OreHit> next = new ArrayList<>();
         for (SeedWorldKnowledge.OrePosition position :
                 KNOWLEDGE.positionsInChunkSquare(playerPos.getX() >> 4, playerPos.getZ() >> 4, radiusChunks)) {
             OreInfo ore = ORE_TYPES.get(position.oreId());
             if (ore == null || !OreScoutConfig.isOreEnabled(ore.name())) continue;
             int dx = position.x() - playerPos.getX();
-            int dy = position.y() - playerPos.getY();
             int dz = position.z() - playerPos.getZ();
-            if ((long) dx * dx + (long) dy * dy + (long) dz * dz
-                    > (long) RENDER_RADIUS_BLOCKS * RENDER_RADIUS_BLOCKS) continue;
+            if (Math.abs(dx) > radiusBlocks || Math.abs(dz) > radiusBlocks) continue;
             next.add(new OreHit(position.x(), position.y(), position.z(), ore));
         }
         renderHits = List.copyOf(next);
