@@ -37,7 +37,7 @@ public final class VanillaFeatureSchedule {
             net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator generator,
             RegistryAccess registries) {
         try {
-            generator.initializeIndexedFeaturesList();
+            generator.validate();
             Object indexedSteps = readIndexedSteps(generator);
             if (!(indexedSteps instanceof List<?> rawSteps)) {
                 throw new IllegalStateException("Vanilla feature index did not return a list");
@@ -63,8 +63,10 @@ public final class VanillaFeatureSchedule {
                                 "Unexpected value in vanilla feature schedule: "
                                         + value.getClass().getName());
                     }
-                    Identifier id = featureRegistry.getKey(feature).orElseThrow(
-                            () -> new IllegalStateException("Unregistered vanilla placed feature"));
+                    Identifier id = featureRegistry.getKey(feature);
+                    if (id == null) {
+                        throw new IllegalStateException("Unregistered vanilla placed feature");
+                    }
                     entries.add(new FeatureEntry(featureIndex, id, feature));
                 }
                 result.add(new DecorationStep(stepIndex, entries));
