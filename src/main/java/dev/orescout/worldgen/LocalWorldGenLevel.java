@@ -93,6 +93,8 @@ public final class LocalWorldGenLevel implements InvocationHandler {
             case "isFluidAtPosition" ->
                     ((java.util.function.Predicate<Object>) a[1]).test(blockState((BlockPos) a[0]).getFluidState());
             case "getFluidState" -> blockState((BlockPos) a[0]).getFluidState();
+            case "getFluidTicks", "getBlockTicks" -> emptyTickAccess(method.getReturnType());
+            case "scheduleTick" -> false;
             case "setBlock" -> setBlock((BlockPos) a[0], (BlockState) a[1], (int) a[2]);
             case "getChunk" -> chunkArgument(a);
             case "hasChunk", "isChunkLoaded" -> chunks.containsKey(new ChunkPos((int) a[0], (int) a[1]));
@@ -115,6 +117,32 @@ public final class LocalWorldGenLevel implements InvocationHandler {
                                 + " " + method.toGenericString());
             }
         };
+    }
+
+    /**
+     * Scheduled ticks are queued by vanilla during feature placement but are not
+     * executed until later world ticks. A local generation snapshot has no ticking
+     * simulation, so expose an empty, side-effect-free tick queue.
+     */
+    private static Object emptyTickAccess(Class<?> type) {
+        if (!type.isInterface()) {
+            throw new IllegalStateException("Expected tick-access interface, got " + type.getName());
+        }
+        return Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, (proxy, method, args) -> {
+            Class<?> result = method.getReturnType();
+            if (result == boolean.class || result == Boolean.class) return false;
+            if (result == int.class || result == Integer.class) return 0;
+            if (result == long.class || result == Long.class) return 0L;
+            if (java.util.List.class.isAssignableFrom(result)) return List.of();
+            if (java.util.Set.class.isAssignableFrom(result)) return java.util.Set.of();
+            if (java.util.Collection.class.isAssignableFrom(result)) return java.util.List.of();
+            if (java.util.Optional.class.isAssignableFrom(result)) return java.util.Optional.empty();
+            if (java.util.stream.Stream.class.isAssignableFrom(result)) return java.util.stream.Stream.empty();
+            if (method.getName().equals("toString")) return "OreScoutEmptyTickAccess";
+            if (method.getName().equals("hashCode")) return System.identityHashCode(proxy);
+            if (method.getName().equals("equals")) return proxy == args[0];
+            return null;
+        });
     }
 
     private ChunkAccess chunkArgument(Object[] args) {
