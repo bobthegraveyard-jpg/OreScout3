@@ -164,12 +164,32 @@ public final class VanillaDecorationPlanner {
                 // Keep inspecting candidates; the correct accessor is identified by its value type.
             }
         }
+        for (Class<?> type = generationSettings.getClass(); type != null; type = type.getSuperclass()) {
+            for (java.lang.reflect.Field field : type.getDeclaredFields()) {
+                if (!List.class.isAssignableFrom(field.getType())) {
+                    continue;
+                }
+                try {
+                    field.setAccessible(true);
+                    Object value = field.get(generationSettings);
+                    if (value instanceof List<?> list && isPlacedFeatureStepList(list, field.getGenericType().getTypeName())) {
+                        return list;
+                    }
+                } catch (IllegalAccessException | RuntimeException ignored) {
+                    // Continue inspecting fields; fail closed if no feature-step list is present.
+                }
+            }
+        }
         throw new IllegalStateException(
                 "Could not identify Minecraft 26.2's biome placed-feature step list on "
                         + generationSettings.getClass().getName());
     }
 
     private static boolean isPlacedFeatureStepList(List<?> steps, Method accessor) {
+        return isPlacedFeatureStepList(steps, accessor.getGenericReturnType().getTypeName());
+    }
+
+    private static boolean isPlacedFeatureStepList(List<?> steps, String genericType) {
         for (Object step : steps) {
             if (!(step instanceof Iterable<?> entries)) {
                 return false;
@@ -184,7 +204,6 @@ public final class VanillaDecorationPlanner {
                 }
             }
         }
-        String genericType = accessor.getGenericReturnType().getTypeName();
         return genericType.contains("PlacedFeature");
     }
 
