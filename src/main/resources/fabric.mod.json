@@ -3,7 +3,7 @@
   "id": "orescout",
   "version": "${version}",
   "name": "OreScout",
-  "description": "Scans loaded terrain for valuable ores and highlights confirmed locations.",
+  "description": "Displays client-side highlights from an independent seed-derived ore coordinate map.",
   "authors": [
     "OreScout"
   ],
