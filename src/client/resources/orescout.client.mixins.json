@@ -3,7 +3,8 @@
   "package": "dev.orescout.client.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "GameRendererMixin"
+    "GameRendererMixin",
+    "MultiPlayerGameModeMixin"
   ],
   "injectors": {
     "defaultRequire": 1
