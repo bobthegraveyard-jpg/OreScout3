@@ -88,6 +88,10 @@ public final class LocalWorldGenLevel implements InvocationHandler {
                     chunkAtQuart((int) a[0], (int) a[2]).getNoiseBiome(
                             (int) a[0], (int) a[1], (int) a[2]);
             case "getBlockState" -> blockState((BlockPos) a[0]);
+            case "isStateAtPosition" ->
+                    ((java.util.function.Predicate<Object>) a[1]).test(blockState((BlockPos) a[0]));
+            case "isFluidAtPosition" ->
+                    ((java.util.function.Predicate<Object>) a[1]).test(blockState((BlockPos) a[0]).getFluidState());
             case "getFluidState" -> blockState((BlockPos) a[0]).getFluidState();
             case "setBlock" -> setBlock((BlockPos) a[0], (BlockState) a[1], (int) a[2]);
             case "getChunk" -> chunkArgument(a);
