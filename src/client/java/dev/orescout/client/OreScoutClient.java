@@ -7,6 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.ArrayDeque;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
@@ -45,6 +49,10 @@ import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -57,6 +65,17 @@ public final class OreScoutClient implements ClientModInitializer {
     private static final int Y_LAYERS_PER_TICK = 4;
     private static final int MAX_TRACKED_ORES = 1800;
     private static final int DISPLAY_LIMIT = 8;
+
+    // Vanilla 26.2 world generation is deterministic for this seed.
+    private static final long TARGET_SEED = 6608149111735331168L;
+    private static final int PREDICTION_RADIUS_CHUNKS = 6;
+    private static final int TICKS_BETWEEN_CHUNK_REQUESTS = 8;
+    private static final ArrayDeque<Long> PREDICTION_QUEUE = new ArrayDeque<>();
+    private static final Set<Long> QUEUED_CHUNKS = ConcurrentHashMap.newKeySet();
+    private static final Set<Long> GENERATED_CHUNKS = ConcurrentHashMap.newKeySet();
+    private static final ConcurrentLinkedQueue<OreHit> PREDICTION_RESULTS = new ConcurrentLinkedQueue<>();
+    private static int ticksUntilNextChunk;
+    private static int worldEpoch;
 
     private static final Map<Block, OreInfo> ORE_TYPES = new LinkedHashMap<>();
     private static final Map<Long, OreHit> FOUND = new LinkedHashMap<>();
@@ -152,9 +171,17 @@ public final class OreScoutClient implements ClientModInitializer {
         Level level = client.level;
         if (level != lastLevel) {
             FOUND.clear();
+            PREDICTION_QUEUE.clear();
+            QUEUED_CHUNKS.clear();
+            GENERATED_CHUNKS.clear();
+            PREDICTION_RESULTS.clear();
+            worldEpoch++;
             lastLevel = level;
             scanY = level.getMinY();
         }
+
+        drainPredictionResults();
+        tickSeedPrediction(client);
 
         int minY = level.getMinY();
         int maxY = level.getMaxY();
@@ -185,7 +212,7 @@ public final class OreScoutClient implements ClientModInitializer {
                     BlockState state = level.getBlockState(pos);
                     OreInfo ore = ORE_TYPES.get(state.getBlock());
                     if (ore != null && OreScoutConfig.isOreEnabled(ore.name())) {
-                        FOUND.put(pos.asLong(), new OreHit(x, y, z, ore));
+                        FOUND.put(pos.asLong(), new OreHit(x, y, z, ore, false));
                     }
                 }
             }
@@ -200,10 +227,89 @@ public final class OreScoutClient implements ClientModInitializer {
         FOUND.entrySet().removeIf(entry -> {
             OreHit hit = entry.getValue();
             BlockPos pos = new BlockPos(hit.x(), hit.y(), hit.z());
-            // Unloaded chunks are rescanned when they return; never render stale hits from them.
-            if (!level.hasChunkAt(pos)) return true;
-            return level.getBlockState(pos).getBlock() != hit.ore().block();
+            if (!level.hasChunkAt(pos)) return !hit.predicted();
+            if (level.getBlockState(pos).getBlock() != hit.ore().block()) return true;
+            if (hit.predicted()) entry.setValue(new OreHit(hit.x(), hit.y(), hit.z(), hit.ore(), false));
+            return false;
         });
+    }
+
+    private static void drainPredictionResults() {
+        OreHit hit;
+        while ((hit = PREDICTION_RESULTS.poll()) != null) {
+            FOUND.putIfAbsent(BlockPos.asLong(hit.x(), hit.y(), hit.z()), hit);
+        }
+    }
+
+    private static void tickSeedPrediction(Minecraft client) {
+        if (!OreScoutConfig.isSeedPredictionEnabled() || client.level == null
+                || !client.level.dimension().equals(Level.OVERWORLD)) return;
+
+        MinecraftServer server = client.getSingleplayerServer();
+        if (server == null) return;
+        ServerLevel serverLevel = server.getLevel(Level.OVERWORLD);
+        if (serverLevel == null || serverLevel.getSeed() != TARGET_SEED) return;
+
+        int centerX = client.player.blockPosition().getX() >> 4;
+        int centerZ = client.player.blockPosition().getZ() >> 4;
+        for (int ring = 0; ring <= PREDICTION_RADIUS_CHUNKS; ring++) {
+            for (int dx = -ring; dx <= ring; dx++) {
+                for (int dz = -ring; dz <= ring; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
+                    long key = chunkKey(centerX + dx, centerZ + dz);
+                    if (!GENERATED_CHUNKS.contains(key) && QUEUED_CHUNKS.add(key)) {
+                        PREDICTION_QUEUE.addLast(key);
+                    }
+                }
+            }
+        }
+
+        if (ticksUntilNextChunk > 0) {
+            ticksUntilNextChunk--;
+            return;
+        }
+        Long key = PREDICTION_QUEUE.pollFirst();
+        if (key == null) return;
+        ticksUntilNextChunk = TICKS_BETWEEN_CHUNK_REQUESTS;
+        int chunkX = (int) (key >> 32);
+        int chunkZ = (int) key;
+        int requestEpoch = worldEpoch;
+
+        // Ask the integrated vanilla server to run the real 26.2 chunk generator.
+        server.execute(() -> {
+            try {
+                ChunkAccess chunk = serverLevel.getChunkSource().getChunk(
+                    chunkX, chunkZ, ChunkStatus.FULL, true
+                );
+                if (chunk == null) return;
+                List<OreHit> found = new ArrayList<>();
+                BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+                for (int x = chunkX << 4; x < (chunkX << 4) + 16; x++) {
+                    for (int z = chunkZ << 4; z < (chunkZ << 4) + 16; z++) {
+                        for (int y = serverLevel.getMinY(); y < serverLevel.getMaxY(); y++) {
+                            pos.set(x, y, z);
+                            OreInfo ore = ORE_TYPES.get(chunk.getBlockState(pos).getBlock());
+                            if (ore != null && OreScoutConfig.isOreEnabled(ore.name())) {
+                                found.add(new OreHit(x, y, z, ore, true));
+                            }
+                        }
+                    }
+                }
+                if (requestEpoch == worldEpoch) {
+                    PREDICTION_RESULTS.addAll(found);
+                    GENERATED_CHUNKS.add(key);
+                }
+            } catch (Throwable error) {
+                System.err.println("[OreScout] Seed scan failed for chunk " + chunkX + "," + chunkZ
+                    + ": " + error.getMessage());
+            } finally {
+                QUEUED_CHUNKS.remove(key);
+            }
+        });
+    }
+
+    private static long chunkKey(int x, int z) {
+        return ((long) x << 32) | (z & 0xffffffffL);
     }
 
     private static void pruneFarAway(BlockPos playerPos) {
@@ -241,7 +347,7 @@ public final class OreScoutClient implements ClientModInitializer {
 
         for (int i = 0; i < rows; i++) {
             OreHit hit = nearby.get(i);
-            String line = hit.ore().name() + "  " + hit.x() + " " + hit.y() + " " + hit.z();
+            String line = (hit.predicted() ? "~ " : "") + hit.ore().name() + "  " + hit.x() + " " + hit.y() + " " + hit.z();
             graphics.text(client.font, line, 14, 27 + i * 12, hit.ore().argb(), false);
         }
 
@@ -376,5 +482,5 @@ public final class OreScoutClient implements ClientModInitializer {
         }
     }
 
-    private record OreHit(int x, int y, int z, OreInfo ore) {}
+    private record OreHit(int x, int y, int z, OreInfo ore, boolean predicted) {}
 }
