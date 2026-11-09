@@ -155,20 +155,29 @@ public final class LocalWorldGenLevel implements InvocationHandler {
     }
 
     private ChunkAccess chunkArgument(Object[] args) {
-        int x = (int) args[0];
-        int z = (int) args[1];
-        ChunkAccess chunk = chunks.get(new ChunkPos(x, z));
-        if (chunk == null) {
-            throw new IllegalStateException(
-                    "Feature attempted to access an unsimulated chunk " + x + "," + z);
-        }
-        if (args.length >= 4 && args[2] instanceof ChunkStatus) {
-            ChunkStatus requested = (ChunkStatus) args[2];
-            if (chunk.getPersistedStatus().isOrAfter(requested)) {
-                return chunk;
+        ChunkAccess chunk;
+        if (args.length > 0 && args[0] instanceof BlockPos pos) {
+            chunk = chunkAt(pos);
+        } else if (args.length > 0 && args[0] instanceof ChunkPos pos) {
+            chunk = chunks.get(pos);
+        } else {
+            int x = (int) args[0];
+            int z = (int) args[1];
+            chunk = chunks.get(new ChunkPos(x, z));
+            if (chunk == null) {
+                throw new IllegalStateException(
+                        "Feature attempted to access an unsimulated chunk " + x + "," + z);
             }
-            throw new IllegalStateException(
-                    "Local chunk " + x + "," + z + " is below requested status " + requested);
+        }
+        if (chunk == null) {
+            throw new IllegalStateException("Feature attempted to access an unsimulated chunk");
+        }
+        for (Object argument : args) {
+            if (argument instanceof ChunkStatus requested
+                    && !chunk.getPersistedStatus().isOrAfter(requested)) {
+                throw new IllegalStateException(
+                        "Local chunk " + chunk.getPos() + " is below requested status " + requested);
+            }
         }
         return chunk;
     }
