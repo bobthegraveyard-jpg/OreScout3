@@ -129,6 +129,17 @@ public final class OreScoutClient implements ClientModInitializer {
         return List.copyOf(ORE_TYPES.keySet());
     }
 
+    /** Chunks are tracked separately from their ore lists so an empty result is not regenerated forever. */
+    public static boolean isChunkGenerated(int chunkX, int chunkZ) {
+        return KNOWLEDGE.isChunkGenerated(chunkX, chunkZ);
+    }
+
+    /** Missing chunk coordinates for an engine scheduler; contains no world/chunk reads. */
+    public static List<SeedWorldKnowledge.ChunkCoordinate> missingChunksInSquare(
+            int centerChunkX, int centerChunkZ, int radiusChunks) {
+        return KNOWLEDGE.missingChunksInSquare(centerChunkX, centerChunkZ, radiusChunks);
+    }
+
     /** Called by the independent generation engine after it has calculated one chunk. */
     public static void publishGeneratedChunk(int chunkX, int chunkZ,
             java.util.Collection<SeedWorldKnowledge.OrePosition> positions) {
