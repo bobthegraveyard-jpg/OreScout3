@@ -93,6 +93,7 @@ public final class SeedWorldKnowledge {
                 | ((long) y & 0xfffL);
     }
 
+    /** oreId is the display key returned by OreScoutClient.getOreNames(). */
     public record OrePosition(int x, int y, int z, String oreId) {
         public OrePosition {
             if (oreId == null || oreId.isBlank()) {
