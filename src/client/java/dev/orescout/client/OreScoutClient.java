@@ -52,7 +52,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -272,7 +272,7 @@ public final class OreScoutClient implements ClientModInitializer {
         if (key == null) return;
         ticksUntilNextChunk = TICKS_BETWEEN_CHUNK_REQUESTS;
         int chunkX = (int) (key >> 32);
-        int chunkZ = (int) key;
+        int chunkZ = (int) (long) key;
         int requestEpoch = worldEpoch;
 
         // Ask the integrated vanilla server to run the real 26.2 chunk generator.
