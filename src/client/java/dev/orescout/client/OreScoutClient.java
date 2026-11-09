@@ -13,6 +13,10 @@ import org.joml.Matrix4fc;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.resources.Identifier;
 
 import com.mojang.blaze3d.PrimitiveTopology;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
@@ -71,8 +75,10 @@ public final class OreScoutClient implements ClientModInitializer {
     private static final StagedVertexBuffer BUFFER =
         new StagedVertexBuffer(() -> "OreScout highlight buffer", RenderType.SMALL_BUFFER_SIZE);
 
-    private static boolean wasOKeyDown = false;
-    private static boolean wasPKeyDown = false;
+    private static final KeyMapping.Category KEY_CATEGORY =
+        KeyMapping.Category.register(Identifier.fromNamespaceAndPath("orescout", "main"));
+    private static KeyMapping toggleOverlayKey;
+    private static KeyMapping openSettingsKey;
     private static Level lastLevel = null;
     private static int scanY = Integer.MIN_VALUE;
 
@@ -100,6 +106,12 @@ public final class OreScoutClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        toggleOverlayKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+            "key.orescout.toggle_overlay", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_O, KEY_CATEGORY
+        ));
+        openSettingsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+            "key.orescout.open_settings", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_P, KEY_CATEGORY
+        ));
         ClientTickEvents.END_CLIENT_TICK.register(OreScoutClient::onClientTick);
         LevelExtractionEvents.END_EXTRACTION.register(context -> renderHits = List.copyOf(FOUND.values()));
         LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(OreScoutClient::renderHighlights);
@@ -109,7 +121,7 @@ public final class OreScoutClient implements ClientModInitializer {
     }
 
     private static void add(Block block, String name, float r, float g, float b) {
-        ORE_TYPES.put(block, new OreInfo(name, r, g, b));
+        ORE_TYPES.put(block, new OreInfo(block, name, r, g, b));
     }
 
     public static List<String> getOreNames() {
@@ -117,18 +129,16 @@ public final class OreScoutClient implements ClientModInitializer {
     }
 
     private static void onClientTick(Minecraft client) {
-        if (client.getWindow() != null) {
-            boolean keyDown = GLFW.glfwGetKey(client.getWindow().handle(), GLFW.GLFW_KEY_O) == GLFW.GLFW_PRESS;
-            if (keyDown && !wasOKeyDown && client.player != null) {
+        boolean togglePressed = toggleOverlayKey != null && toggleOverlayKey.consumeClick();
+        boolean settingsPressed = openSettingsKey != null && openSettingsKey.consumeClick();
+        // Drain key clicks while a screen is open, but only act during gameplay.
+        if (client.player != null && client.screen == null) {
+            if (togglePressed) {
                 OreScoutConfig.setOverlayEnabled(!OreScoutConfig.isOverlayEnabled());
             }
-            wasOKeyDown = keyDown;
-
-            boolean settingsDown = GLFW.glfwGetKey(client.getWindow().handle(), GLFW.GLFW_KEY_P) == GLFW.GLFW_PRESS;
-            if (settingsDown && !wasPKeyDown && client.player != null) {
+            if (settingsPressed) {
                 client.gui.setScreen(new OreScoutConfigScreen(client.gui.screen()));
             }
-            wasPKeyDown = settingsDown;
         }
 
         if (client.level == null || client.player == null) {
@@ -182,7 +192,18 @@ public final class OreScoutClient implements ClientModInitializer {
         }
 
         scanY = endY >= maxY ? minY : endY;
+        reconcileTrackedOres(level);
         pruneFarAway(client.player.blockPosition());
+    }
+
+    private static void reconcileTrackedOres(Level level) {
+        FOUND.entrySet().removeIf(entry -> {
+            OreHit hit = entry.getValue();
+            BlockPos pos = new BlockPos(hit.x(), hit.y(), hit.z());
+            // Unloaded chunks are rescanned when they return; never render stale hits from them.
+            if (!level.hasChunkAt(pos)) return true;
+            return level.getBlockState(pos).getBlock() != hit.ore().block();
+        });
     }
 
     private static void pruneFarAway(BlockPos playerPos) {
@@ -346,7 +367,7 @@ public final class OreScoutClient implements ClientModInitializer {
         BUFFER.close();
     }
 
-    private record OreInfo(String name, float r, float g, float b) {
+    private record OreInfo(Block block, String name, float r, float g, float b) {
         int argb() {
             int red = Math.round(r * 255);
             int green = Math.round(g * 255);
