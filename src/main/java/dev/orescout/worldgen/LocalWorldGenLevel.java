@@ -32,7 +32,7 @@ import net.minecraft.world.level.levelgen.LegacyRandomSource;
  */
 public final class LocalWorldGenLevel implements InvocationHandler {
     private final Map<ChunkPos, ? extends ChunkAccess> chunks;
-    private final ChunkPos writableChunk;
+    private final java.util.Set<ChunkPos> writableChunks;
     private final RegistryAccess registries;
     private final BiomeManager biomeManager;
     private final NoiseBasedChunkGenerator generator;
@@ -43,7 +43,7 @@ public final class LocalWorldGenLevel implements InvocationHandler {
 
     public LocalWorldGenLevel(
             Map<ChunkPos, ? extends ChunkAccess> chunks,
-            ChunkPos writableChunk,
+            java.util.Set<ChunkPos> writableChunks,
             RegistryAccess registries,
             BiomeManager biomeManager,
             NoiseBasedChunkGenerator generator,
@@ -51,7 +51,7 @@ public final class LocalWorldGenLevel implements InvocationHandler {
             int minY,
             int height) {
         this.chunks = Map.copyOf(chunks);
-        this.writableChunk = writableChunk;
+        this.writableChunks = java.util.Set.copyOf(writableChunks);
         this.registries = registries;
         this.biomeManager = biomeManager;
         this.generator = generator;
@@ -114,7 +114,7 @@ public final class LocalWorldGenLevel implements InvocationHandler {
             case "getLevel", "getServer", "getChunkSource", "getLevelData",
                     "getLightEngine", "getBlockEntity", "getWorldBorder" -> null;
             case "setCurrentlyGenerating", "setCurrentlyGeneratingStructureName" -> null;
-            case "toString" -> "OreScoutLocalWorldGenLevel[" + writableChunk + "]";
+            case "toString" -> "OreScoutLocalWorldGenLevel[" + writableChunks + "]";
             case "hashCode" -> System.identityHashCode(proxy);
             case "equals" -> proxy == a[0];
             default -> {
@@ -203,8 +203,7 @@ public final class LocalWorldGenLevel implements InvocationHandler {
     private boolean writable(BlockPos pos) {
         return pos.getY() >= minY
                 && pos.getY() < minY + height
-                && (pos.getX() >> 4) == writableChunk.x()
-                && (pos.getZ() >> 4) == writableChunk.z();
+                && writableChunks.contains(new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4));
     }
 
     private boolean setBlock(BlockPos pos, BlockState state, int flags) {
