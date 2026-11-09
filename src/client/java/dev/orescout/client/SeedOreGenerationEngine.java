@@ -63,8 +63,10 @@ public final class SeedOreGenerationEngine implements AutoCloseable {
         ChunkPos center = new ChunkPos(chunkX, chunkZ);
         Map<ChunkPos, ProtoChunk> localChunks = new LinkedHashMap<>();
 
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
+        // Every source chunk in the target's 3x3 write neighborhood needs its
+        // own 3x3 biome neighborhood. Generate the resulting 5x5 terrain halo.
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
                 int x = chunkX + dx;
                 int z = chunkZ + dz;
                 ProtoChunk chunk = pipeline.generate(TARGET_SEED, randomState, x, z);
@@ -72,27 +74,46 @@ public final class SeedOreGenerationEngine implements AutoCloseable {
             }
         }
 
-        List<VanillaFeatureSchedule.DecorationStep> selected = planner.select(center, localChunks);
         ProtoChunk target = localChunks.get(center);
-        LocalWorldGenLevel localLevel = new LocalWorldGenLevel(
-                localChunks,
-                center,
-                pipeline.registries(),
-                pipeline.biomeManager(TARGET_SEED, randomState),
-                generator,
-                TARGET_SEED,
-                minY,
-                height);
-        WorldGenLevel level = localLevel.view();
-        BlockPos origin = new BlockPos(center.getMinBlockX(), minY, center.getMinBlockZ());
-
         int placedCalls = 0;
-        for (VanillaFeatureSchedule.DecorationStep step : selected) {
-            for (VanillaFeatureSchedule.FeatureEntry entry : step.features()) {
-                WorldgenRandom random = VanillaDecorationPlanner.randomFor(
-                        TARGET_SEED, center, step.step(), entry.index());
-                place(entry.feature(), level, generator, random, origin);
-                placedCalls++;
+
+        // Vanilla features may write across their source chunk boundary. Replay
+        // all nine source chunks, each with the same 3x3 writable region that a
+        // vanilla WorldGenRegion provides, then read only the requested center.
+        for (int sourceDx = -1; sourceDx <= 1; sourceDx++) {
+            for (int sourceDz = -1; sourceDz <= 1; sourceDz++) {
+                ChunkPos source = new ChunkPos(chunkX + sourceDx, chunkZ + sourceDz);
+                List<VanillaFeatureSchedule.DecorationStep> selected =
+                        planner.select(source, localChunks);
+                java.util.Set<ChunkPos> writableChunks = new java.util.HashSet<>();
+                for (int writeDx = -1; writeDx <= 1; writeDx++) {
+                    for (int writeDz = -1; writeDz <= 1; writeDz++) {
+                        writableChunks.add(new ChunkPos(
+                                source.x() + writeDx, source.z() + writeDz));
+                    }
+                }
+
+                LocalWorldGenLevel localLevel = new LocalWorldGenLevel(
+                        localChunks,
+                        writableChunks,
+                        pipeline.registries(),
+                        pipeline.biomeManager(TARGET_SEED, randomState),
+                        generator,
+                        TARGET_SEED,
+                        minY,
+                        height);
+                WorldGenLevel level = localLevel.view();
+                BlockPos origin = new BlockPos(
+                        source.getMinBlockX(), minY, source.getMinBlockZ());
+
+                for (VanillaFeatureSchedule.DecorationStep step : selected) {
+                    for (VanillaFeatureSchedule.FeatureEntry entry : step.features()) {
+                        WorldgenRandom random = VanillaDecorationPlanner.randomFor(
+                                TARGET_SEED, source, step.step(), entry.index());
+                        place(entry.feature(), level, generator, random, origin);
+                        placedCalls++;
+                    }
+                }
             }
         }
 
