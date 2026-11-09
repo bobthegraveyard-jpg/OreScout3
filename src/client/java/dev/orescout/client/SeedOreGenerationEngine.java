@@ -83,8 +83,21 @@ public final class SeedOreGenerationEngine implements AutoCloseable {
         for (int sourceDx = -1; sourceDx <= 1; sourceDx++) {
             for (int sourceDz = -1; sourceDz <= 1; sourceDz++) {
                 ChunkPos source = new ChunkPos(chunkX + sourceDx, chunkZ + sourceDz);
+                Map<ChunkPos, ProtoChunk> sourceRegion = new LinkedHashMap<>();
+                for (int regionDx = -1; regionDx <= 1; regionDx++) {
+                    for (int regionDz = -1; regionDz <= 1; regionDz++) {
+                        ChunkPos regionPos = new ChunkPos(
+                                source.x() + regionDx, source.z() + regionDz);
+                        ProtoChunk regionChunk = localChunks.get(regionPos);
+                        if (regionChunk == null) {
+                            throw new IllegalStateException(
+                                    "Missing local feature-region chunk " + regionPos);
+                        }
+                        sourceRegion.put(regionPos, regionChunk);
+                    }
+                }
                 List<VanillaFeatureSchedule.DecorationStep> selected =
-                        planner.select(source, localChunks);
+                        planner.select(source, sourceRegion);
                 java.util.Set<ChunkPos> writableChunks = new java.util.HashSet<>();
                 for (int writeDx = -1; writeDx <= 1; writeDx++) {
                     for (int writeDz = -1; writeDz <= 1; writeDz++) {
@@ -94,7 +107,7 @@ public final class SeedOreGenerationEngine implements AutoCloseable {
                 }
 
                 LocalWorldGenLevel localLevel = new LocalWorldGenLevel(
-                        localChunks,
+                        sourceRegion,
                         writableChunks,
                         pipeline.registries(),
                         pipeline.biomeManager(TARGET_SEED, randomState),
