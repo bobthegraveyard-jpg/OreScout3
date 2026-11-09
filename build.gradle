@@ -79,3 +79,14 @@ publishing {
 		// retrieving dependencies.
 	}
 }
+
+
+// Executes one seed-derived local Overworld chunk in CI. This is deliberately
+// separate from the ordinary build because it runs vanilla world generation.
+tasks.register("worldgenSmokeTest", JavaExec) {
+	group = "verification"
+	description = "Runs the isolated local OreScout world-generation smoke test"
+	dependsOn tasks.named("clientClasses")
+	classpath = sourceSets.client.runtimeClasspath
+	mainClass = "dev.orescout.client.SeedOreGenerationSmokeTest"
+}
