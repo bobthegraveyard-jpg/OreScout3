@@ -139,20 +139,53 @@ public final class VanillaDecorationPlanner {
     }
 
     private static List<?> featureSteps(Object generationSettings) {
-        try {
-            Method method = generationSettings.getClass().getMethod("getFeatures");
-            Object value = method.invoke(generationSettings);
-            if (value instanceof List<?> list) {
-                return list;
+        List<Method> candidates = new ArrayList<>();
+        for (Method method : generationSettings.getClass().getMethods()) {
+            if (method.getParameterCount() == 0 && List.class.isAssignableFrom(method.getReturnType())) {
+                candidates.add(method);
             }
-            throw new IllegalStateException("Biome getFeatures() did not return a List");
-        } catch (NoSuchMethodException | IllegalAccessException exception) {
-            throw new IllegalStateException(
-                    "Minecraft 26.2 biome generation settings API changed", exception);
-        } catch (InvocationTargetException exception) {
-            throw new IllegalStateException(
-                    "Minecraft failed to read biome placed-feature settings", exception.getCause());
         }
+        for (Method method : generationSettings.getClass().getDeclaredMethods()) {
+            if (method.getParameterCount() == 0
+                    && List.class.isAssignableFrom(method.getReturnType())
+                    && !candidates.contains(method)) {
+                candidates.add(method);
+            }
+        }
+
+        for (Method method : candidates) {
+            try {
+                method.setAccessible(true);
+                Object value = method.invoke(generationSettings);
+                if (value instanceof List<?> list && isPlacedFeatureStepList(list, method)) {
+                    return list;
+                }
+            } catch (IllegalAccessException | InvocationTargetException | RuntimeException ignored) {
+                // Keep inspecting candidates; the correct accessor is identified by its value type.
+            }
+        }
+        throw new IllegalStateException(
+                "Could not identify Minecraft 26.2's biome placed-feature step list on "
+                        + generationSettings.getClass().getName());
+    }
+
+    private static boolean isPlacedFeatureStepList(List<?> steps, Method accessor) {
+        for (Object step : steps) {
+            if (!(step instanceof Iterable<?> entries)) {
+                return false;
+            }
+            for (Object entry : entries) {
+                if (entry instanceof Holder<?> holder
+                        && holder.value() instanceof PlacedFeature) {
+                    return true;
+                }
+                if (entry instanceof PlacedFeature) {
+                    return true;
+                }
+            }
+        }
+        String genericType = accessor.getGenericReturnType().getTypeName();
+        return genericType.contains("PlacedFeature");
     }
 
     /**
