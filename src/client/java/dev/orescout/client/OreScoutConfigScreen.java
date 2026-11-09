@@ -36,8 +36,6 @@ public final class OreScoutConfigScreen extends Screen {
             value -> OreScoutConfig.setOverlayEnabled(value), buttonWidth));
         content.addChild(toggleButton("Coordinates list", OreScoutConfig.isCoordinatesEnabled(),
             value -> OreScoutConfig.setCoordinatesEnabled(value), buttonWidth));
-        content.addChild(toggleButton("Seed discovery (singleplayer)", OreScoutConfig.isSeedPredictionEnabled(),
-            value -> OreScoutConfig.setSeedPredictionEnabled(value), buttonWidth));
 
         content.addChild(new StringWidget(buttonWidth, 18, Component.literal("ORE TYPES"), font));
         List<String> ores = new ArrayList<>(OreScoutClient.getOreNames());
@@ -87,7 +85,7 @@ public final class OreScoutConfigScreen extends Screen {
         graphics.fill(0, 0, width, height, 0xC0101018);
         graphics.centeredText(font, title, width / 2, 16, 0xFFFFFFFF);
         graphics.centeredText(font,
-            Component.literal("Seed discovery generates nearby chunks using vanilla 26.2 world generation. Scroll for more options."),
+            Component.literal("Ore highlights come from the independent seed map. Scroll for more options."),
             width / 2, 32, 0xFFBBBBBB);
         super.extractRenderState(graphics, mouseX, mouseY, delta);
     }
