@@ -133,7 +133,7 @@ public final class LocalWorldGenLevel implements InvocationHandler {
             if (result == boolean.class || result == Boolean.class) return false;
             if (result == int.class || result == Integer.class) return 0;
             if (result == long.class || result == Long.class) return 0L;
-            if (java.util.List.class.isAssignableFrom(result)) return List.of();
+            if (java.util.List.class.isAssignableFrom(result)) return java.util.List.of();
             if (java.util.Set.class.isAssignableFrom(result)) return java.util.Set.of();
             if (java.util.Collection.class.isAssignableFrom(result)) return java.util.List.of();
             if (java.util.Optional.class.isAssignableFrom(result)) return java.util.Optional.empty();
